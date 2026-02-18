@@ -1,50 +1,62 @@
-import { useState } from 'react'
+import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material'
+import { Link, Route, Routes } from 'react-router-dom'
 
-import { fetchCatFacts } from './api/catFacts'
-import { ErrorCard } from './components/ErrorCard'
-import { FactsCard } from './components/FactsCard'
-import type { CatFact } from './api/catFacts'
+import { useAppDispatch, useAppSelector } from './app/hooks'
+import { logout } from './features/auth/authSlice'
+import { withAuthGuard } from './hoc/withAuthGuard'
+import { withGuestOnly } from './hoc/withGuestOnly'
+import { HomePage } from './pages/HomePage'
+import { LoginPage } from './pages/LoginPage'
+import { NotFoundPage } from './pages/NotFoundPage'
+import { RegisterPage } from './pages/RegisterPage'
+
+const GuardedHomePage = withAuthGuard(HomePage)
+const GuestLoginPage = withGuestOnly(LoginPage)
+const GuestRegisterPage = withGuestOnly(RegisterPage)
 
 export function App() {
-  const [facts, setFacts] = useState<CatFact[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-
-  async function onFetchClick() {
-    setIsLoading(true)
-    setError(null)
-    setFacts(null)
-
-    try {
-      const data = await fetchCatFacts(5)
-      setFacts(data)
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Unknown error'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const user = useAppSelector((s) => s.auth.user)
+  const dispatch = useAppDispatch()
 
   return (
-    <main className="container">
-      <header className="header">
-        <h1 className="title">Cat facts</h1>
-        <p className="subtitle">
-          Нажми на кнопку, чтобы получить факты с API и отобразить результат отдельным компонентом.
-        </p>
-      </header>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography
+            component={Link}
+            to="/"
+            variant="h6"
+            sx={{ color: 'inherit', textDecoration: 'none', flexGrow: 1, fontWeight: 800 }}
+          >
+            Homework React
+          </Typography>
 
-      <div className="actions">
-        <button className="button" type="button" onClick={onFetchClick} disabled={isLoading}>
-          {isLoading ? 'Загрузка…' : 'Получить факты'}
-        </button>
-      </div>
+          {user ? (
+            <>
+              <Typography sx={{ mr: 2, opacity: 0.9 }}>{user.email}</Typography>
+              <Button color="inherit" onClick={() => dispatch(logout())}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button color="inherit" component={Link} to="/login">
+                Login
+              </Button>
+              <Button color="inherit" component={Link} to="/register">
+                Register
+              </Button>
+            </>
+          )}
+        </Toolbar>
+      </AppBar>
 
-      <section className="content">
-        {error ? <ErrorCard message={error} /> : null}
-        {facts ? <FactsCard facts={facts} /> : null}
-      </section>
-    </main>
+      <Routes>
+        <Route path="/" element={<GuardedHomePage />} />
+        <Route path="/login" element={<GuestLoginPage />} />
+        <Route path="/register" element={<GuestRegisterPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Box>
   )
 }
